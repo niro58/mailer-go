@@ -1,0 +1,43 @@
+services:
+  watchtower:
+    image: containrrr/watchtower
+    command:
+      - "--label-enable"
+      - "--interval"
+      - "30"
+      - "--rolling-restart"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+  mailer-go:
+    image: ghcr.io/niro58/mailer-go:prod
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+    labels:
+      - "traefik.enable=true" # Enable Traefik for this service
+      - "traefik.http.routers.mailer-go.rule=Host(`api.nichita-r.com`)" # Route based on host
+      - "traefik.http.routers.mailer-go.entrypoints=websecure" # Use the HTTPS entry point
+      - "traefik.http.routers.mailer-go.tls.certresolver=myresolver" # Use Let's Encrypt for TLS
+      - "traefik.http.services.mailer-go.loadbalancer.server.port=8085" # Specify the app's port (adjust if needed)
+      - "traefik.http.services.mailer-go.loadbalancer.sticky=true" # Enable session stickiness
+      - "com.centurylinklabs.watchtower.enable=true"
+    secrets:
+      - api-auth
+      - clients-path
+    environment:
+      - API_AUTH=/run/secrets/api-auth
+      - CLIENTS_PATH=/run/secrets/clients-path
+    networks:
+      - web # Attach to the external `web` network
+
+secrets:
+  api-auth:
+    file: secrets/api-auth.txt
+  clients-path:
+    file: secrets/clients-path.txt
+
+networks:
+  web:
+    external: true

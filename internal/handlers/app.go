@@ -1,15 +1,15 @@
 package handler
 
 import (
-	contract "email-sender/contracts"
-	service "email-sender/services"
+	contract "mailer-go/internal/contracts"
+	service "mailer-go/internal/services"
 )
 
 type App struct {
 	EmailService contract.EmailService
 }
 
-func CreateApplication () App {
+func CreateApplication() App {
 	var app App
 	app.EmailService = service.NewEmailService()
 

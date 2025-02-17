@@ -1,14 +1,19 @@
 package handler
 
 import (
-	contract "email-sender/contracts"
+	contract "mailer-go/internal/contracts"
 	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
-func (a *App) Send(c *gin.Context){
-	
+func (a *App) Health(c *gin.Context) {
+	c.JSON(200, CreateReply(
+		"ok2",
+		nil,
+	))
+}
+func (a *App) Send(c *gin.Context) {
 	auth := c.Request.Header.Get("Authorization")
 	apiAuth := os.Getenv("API_AUTH")
 	if auth != apiAuth {
@@ -16,11 +21,14 @@ func (a *App) Send(c *gin.Context){
 			nil,
 			ErrUnauthorized,
 		))
-			return
+		return
 	}
 	type Request struct {
-		Subject string `json:"subject"`
-		Body string `json:"body"`
+		Sender    string `json:"sender"`
+		Reason    string `json:"reason"`
+		Subject   string `json:"subject"`
+		Body      string `json:"body"`
+		Recipient string `json:"recipient"`
 	}
 
 	var req Request
@@ -32,11 +40,11 @@ func (a *App) Send(c *gin.Context){
 		return
 	}
 	email := contract.Email{
-		To:  os.Getenv("EMAIL_TO"),
 		Subject: req.Subject,
-		Body: req.Body,
+		Body:    req.Body,
 	}
-	err := a.EmailService.Send(email)
+
+	err := a.EmailService.Send(req.Sender, req.Reason, email, req.Recipient)
 
 	if err != nil {
 		c.JSON(200, CreateReply(
@@ -45,10 +53,9 @@ func (a *App) Send(c *gin.Context){
 		))
 		return
 	}
-	
+
 	c.JSON(200, CreateReply(
 		nil,
 		nil,
 	))
 }
-

@@ -1,4 +1,4 @@
-module email-sender
+module mailer-go
 
 go 1.23.1
 
