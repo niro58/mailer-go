@@ -1,7 +1,9 @@
 package main
 
 import (
-	route "email-sender/routes"
+	"fmt"
+	"mailer-go/internal/config"
+	route "mailer-go/internal/routes"
 
 	"github.com/joho/godotenv"
 )
@@ -9,8 +11,8 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		panic("Error loading .env file")
+		fmt.Println("Error loading .env file")
 	}
-
+	config.Senders = config.GetSenders()
 	route.SetupRouter()
 }
