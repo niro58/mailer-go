@@ -12,13 +12,10 @@ func SetupRouter() *gin.Engine {
 
 	r := gin.Default()
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.AuthRequired())
 
-	authRequired := r.Group("/")
-	authRequired.Use(middleware.AuthRequired())
-	{
-		r.GET("/health", app.Health)
-		r.POST("/send", app.Send)
-	}
+	r.GET("/health", app.Health)
+	r.POST("/send", app.Send)
 
 	r.Run(":8085")
 	return r

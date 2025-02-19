@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   watchtower:
     image: containrrr/watchtower
@@ -8,13 +10,18 @@ services:
       - "--rolling-restart"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-  mailer-go:
-    image: ghcr.io/niro58/mailer-go:prod
     deploy:
-      replicas: 3
+      mode: replicated
+      replicas: 1
       restart_policy:
         condition: on-failure
+    networks:
+      - web
+
+  mailer-go:
+    image: ghcr.io/niro58/mailer-go:prod
+    volumes:
+      - /home/niro/mailer-go/clients.json:/clients.json
     labels:
       - "traefik.enable=true" # Enable Traefik for this service
       - "traefik.http.routers.mailer-go.rule=Host(`api.nichita-r.com`)" # Route based on host
@@ -23,20 +30,19 @@ services:
       - "traefik.http.services.mailer-go.loadbalancer.server.port=8085" # Specify the app's port (adjust if needed)
       - "traefik.http.services.mailer-go.loadbalancer.sticky=true" # Enable session stickiness
       - "com.centurylinklabs.watchtower.enable=true"
-    secrets:
-      - api-auth
-      - clients-path
-    environment:
-      - API_AUTH=/run/secrets/api-auth
-      - CLIENTS_PATH=/run/secrets/clients-path
+    env_file:
+      - env
+    deploy:
+      mode: replicated
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+      placement: {}
     networks:
-      - web # Attach to the external `web` network
-
-secrets:
-  api-auth:
-    file: secrets/api-auth.txt
-  clients-path:
-    file: secrets/clients-path.txt
+      - web
 
 networks:
   web:

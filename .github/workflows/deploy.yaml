@@ -73,17 +73,13 @@ jobs:
       - name: Create env file
         run: |
           echo "GIT_COMMIT_HASH=${{ needs.commit-hash.outputs.commit_hash }}" >> env
-          echo "API_AUTH=$(cat secrets/api-auth.txt)" >> env
-          echo "CLIENTS_PATH=$(cat secrets/clients-path.txt)" >> env
+          echo "API_AUTH=${{ secrets.API_AUTH }}" >> env
 
-      - name: Deploy Main Project
-        uses: appleboy/ssh-action@master
+      - name: "Docker Stack Deploy"
+        uses: cssnr/stack-deploy-action@v1
         with:
+          name: "mailer-go"
+          file: "docker-stack.yml"
           host: api.nichita-r.com
-          username: niro
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd ~/mailer-go
-            git pull origin main
-            docker compose pull --ignore-pull-failures
-            docker compose up -d --scale mailer-go=3 --force-recreate
+          user: niro
+          ssh_key: ${{ secrets.DEPLOY_SSH_KEY }}

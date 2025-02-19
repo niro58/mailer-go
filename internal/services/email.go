@@ -2,75 +2,116 @@ package service
 
 import (
 	"crypto/tls"
-	"mailer-go/internal/config"
+	"encoding/json"
+	"errors"
+	"io"
 	contract "mailer-go/internal/contracts"
 	"net/smtp"
+	"os"
+	"path"
+	"sync"
 )
 
+type ClientConfig struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Mutex    *sync.Mutex
+}
 type EmailService struct {
-	Clients map[string]*smtp.Client
+	Configs map[string]*ClientConfig
 }
 
-func CreateClients() map[string]*smtp.Client {
-	clients := make(map[string]*smtp.Client)
-	for key, sender := range config.Senders {
-		tlsConfig := &tls.Config{
-			ServerName: sender.Host,
-		}
-		conn, err := tls.Dial("tcp", sender.Host+":"+sender.Port, tlsConfig)
-		if err != nil {
-			panic(err)
-		}
-
-		client, err := smtp.NewClient(conn, sender.Host)
-		if err != nil {
-			panic(err)
-		}
-
-		auth := smtp.PlainAuth("", sender.Username, sender.Password, sender.Host)
-		if err := client.Auth(auth); err != nil {
-			panic(err)
-		}
-		if err := client.Mail(sender.Username); err != nil {
-			panic(err)
-		}
-
-		clients[key] = client
+func getClientConfigs() (map[string]*ClientConfig, error) {
+	dirname, err := os.Getwd()
+	if err != nil {
+		return nil, err
 	}
-	return clients
-}
-func NewEmailService() EmailService {
-	return EmailService{Clients: CreateClients()}
+	jsonFile, err := os.Open(path.Join(dirname, "/clients.json"))
+	if err != nil {
+		return nil, err
+	}
+	defer jsonFile.Close()
+
+	byteValue, _ := io.ReadAll(jsonFile)
+
+	var result map[string]*ClientConfig
+	json.Unmarshal([]byte(byteValue), &result)
+	for _, config := range result {
+		config.Mutex = &sync.Mutex{}
+	}
+
+	return result, nil
 }
 
-func (e EmailService) Send(sender string, contactReason string, email contract.Email, recipient string) error {
-	client := e.Clients[sender]
-	if client == nil {
-		return config.ErrSenderNotFound
+var ErrClientNotFound = errors.New("client not found")
+
+func createSMTPClient(sender ClientConfig) (*smtp.Client, error) {
+	tlsConfig := &tls.Config{
+		ServerName: sender.Host,
+	}
+
+	conn, err := tls.Dial("tcp", sender.Host+":"+sender.Port, tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := smtp.NewClient(conn, sender.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	auth := smtp.PlainAuth("", sender.Username, sender.Password, sender.Host)
+	if err := client.Auth(auth); err != nil {
+		return nil, err
+	}
+	if err := client.Mail(sender.Username); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func NewEmailService() EmailService {
+	configs, err := getClientConfigs()
+	if err != nil {
+		panic(err)
+	}
+	return EmailService{configs}
+}
+
+func (e EmailService) Send(senderKey string, recipient string, email contract.Email) error {
+	config, exists := e.Configs[senderKey]
+	if !exists {
+		return ErrClientNotFound
+	}
+
+	config.Mutex.Lock()
+	defer config.Mutex.Unlock()
+	client, err := createSMTPClient(*config)
+	if err != nil {
+		return err
 	}
 	if err := client.Rcpt(recipient); err != nil {
-		panic(err)
+		return err
 	}
 
 	w, err := client.Data()
 	if err != nil {
-		panic(err)
+		return err
 	}
-	username := ""
-	msg := "From: " + username + "\r\n" +
+	msg := "From: " + config.Host + "\r\n" +
 		"To: " + recipient + "\r\n" +
 		"Subject: " + email.Subject + "\r\n" +
-		"\r\n" + // Blank line to separate headers from body
+		"\r\n" +
 		email.Body + "\r\n"
 
-	_, err = w.Write([]byte(msg))
-	if err != nil {
-		panic(err)
+	if _, err = w.Write([]byte(msg)); err != nil {
+		return err
 	}
-	err = w.Close()
-	if err != nil {
-		panic(err)
+	if err = w.Close(); err != nil {
+		return err
 	}
-	client.Quit()
+
 	return nil
 }
