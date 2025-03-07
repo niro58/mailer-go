@@ -1,17 +1,6 @@
-
-# syntax=docker/dockerfile:1
-
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
-################################################################################
-# Create a stage for building the application.
 ARG GO_VERSION=1.23.2
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
-LABEL org.opencontainers.image.source=https://github.com/dreamsofcode-io/guestbook
+LABEL org.opencontainers.image.source=https://github.com/niro58/mailer-go
 WORKDIR /src
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
@@ -48,7 +37,7 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
 # (e.g., alpine:3.17.2) or SHA (e.g., alpine@sha256:c41ab5c992deb4fe7e5da09f67a8804a46bd0592bfdf0b1847dde0e0889d2bff).
 FROM alpine:latest AS final
 
-LABEL org.opencontainers.image.source=https://github.com/dreamsofcode-io/guestbook
+LABEL org.opencontainers.image.source=https://github.com/niro58/mailer-go
 # Install any runtime dependencies that are needed to run your application.
 # Leverage a cache mount to /var/cache/apk/ to speed up subsequent builds.
 RUN --mount=type=cache,target=/var/cache/apk \
