@@ -1,0 +1,5 @@
+{
+  "name": "Test",
+  "subject": "Test {{name}}",
+  "body": "<h1>Test {{name}} {{surname}}</h1>"
+}

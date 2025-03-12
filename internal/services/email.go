@@ -9,7 +9,13 @@ import (
 	"net/smtp"
 	"os"
 	"path"
+	"strings"
 	"sync"
+)
+
+var (
+	ErrClientNotFound   = errors.New("client not found")
+	ErrTemplateNotFound = errors.New("client not found")
 )
 
 type ClientConfig struct {
@@ -17,10 +23,17 @@ type ClientConfig struct {
 	Port     string `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Mutex    *sync.Mutex
 }
+
+var (
+	workers = 10
+	jobs    = make(chan contract.Email, workers)
+	wg      = sync.WaitGroup{}
+)
+
 type EmailService struct {
-	Configs map[string]*ClientConfig
+	Configs   map[string]*ClientConfig
+	Templates map[string]Template
 }
 
 func getClientConfigs() (map[string]*ClientConfig, error) {
@@ -38,14 +51,9 @@ func getClientConfigs() (map[string]*ClientConfig, error) {
 
 	var result map[string]*ClientConfig
 	json.Unmarshal([]byte(byteValue), &result)
-	for _, config := range result {
-		config.Mutex = &sync.Mutex{}
-	}
 
 	return result, nil
 }
-
-var ErrClientNotFound = errors.New("client not found")
 
 func createSMTPClient(sender ClientConfig) (*smtp.Client, error) {
 	tlsConfig := &tls.Config{
@@ -77,41 +85,90 @@ func NewEmailService() EmailService {
 	if err != nil {
 		panic(err)
 	}
-	return EmailService{configs}
+	templates, err := getTemplates()
+	if err != nil {
+		panic(err)
+	}
+
+	return EmailService{configs, templates}
 }
 
-func (e EmailService) Send(senderKey string, recipient string, email contract.Email) error {
-	config, exists := e.Configs[senderKey]
-	if !exists {
-		return ErrClientNotFound
+func (e EmailService) StartPool() {
+	for w := 0; w <= workers; w++ {
+		wg.Add(1)
+		go e.Send(w, jobs, &wg)
 	}
+}
+func (e EmailService) AddJob(email contract.Email) error {
+	jobs <- email
+	return nil
+}
+func (e EmailService) AddTemplateJob(template contract.EmailTemplate) error {
+	var email contract.Email
 
-	config.Mutex.Lock()
-	defer config.Mutex.Unlock()
-	client, err := createSMTPClient(*config)
+	templateConfig, ok := e.Templates[template.TemplateKey]
+	if !ok {
+		return ErrTemplateNotFound
+	}
+	err := templateConfig.Validate(template.Variables)
 	if err != nil {
 		return err
 	}
-	if err := client.Rcpt(recipient); err != nil {
-		return err
+
+	for k, v := range template.Variables {
+		templateConfig.Body = strings.ReplaceAll(templateConfig.Body, k, v)
+		templateConfig.Subject = strings.ReplaceAll(templateConfig.Subject, k, v)
 	}
 
-	w, err := client.Data()
-	if err != nil {
-		return err
-	}
-	msg := "From: " + config.Host + "\r\n" +
-		"To: " + recipient + "\r\n" +
-		"Subject: " + email.Subject + "\r\n" +
-		"\r\n" +
-		email.Body + "\r\n"
+	email.Subject = templateConfig.Subject
+	email.Body = templateConfig.Body
+	jobs <- email
 
-	if _, err = w.Write([]byte(msg)); err != nil {
-		return err
-	}
-	if err = w.Close(); err != nil {
-		return err
+	return nil
+}
+func (e *EmailService) Send(id int, jobs <-chan contract.Email, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	for job := range jobs {
+		config, exists := e.Configs[job.SenderKey]
+		if !exists {
+			return ErrClientNotFound
+		}
+
+		client, err := createSMTPClient(*config)
+		if err != nil {
+			return err
+		}
+		defer client.Quit()
+
+		for _, recipient := range job.Recipients {
+			if err := client.Rcpt(recipient); err != nil {
+				return err
+			}
+		}
+
+		w, err := client.Data()
+		if err != nil {
+			return err
+		}
+		msg := "From: " + config.Host + "\r\n" +
+			"To: " + strings.Join(job.Recipients, ", ") + "\r\n" +
+			"Bcc: " + strings.Join(job.Bcc, ", ") + "\r\n" +
+			"Subject: " + job.Subject + "\r\n" +
+			"\r\n" +
+			job.Body + "\r\n"
+
+		if _, err = w.Write([]byte(msg)); err != nil {
+			return err
+		}
+		if err = w.Close(); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func (EmailService) Count() int {
+	return len(jobs)
 }

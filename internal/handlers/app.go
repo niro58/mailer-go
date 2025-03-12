@@ -11,7 +11,9 @@ type App struct {
 
 func CreateApplication() App {
 	var app App
+
 	app.EmailService = service.NewEmailService()
+	app.EmailService.StartPool()
 
 	return app
 }

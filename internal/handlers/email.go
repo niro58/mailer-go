@@ -13,14 +13,7 @@ func (a *App) Health(c *gin.Context) {
 	))
 }
 func (a *App) Send(c *gin.Context) {
-	type Request struct {
-		SenderKey string `json:"senderKey"`
-		Recipient string `json:"recipient"`
-		Subject   string `json:"subject"`
-		Body      string `json:"body"`
-	}
-
-	var req Request
+	var req contract.Email
 	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(200, CreateReply(
 			nil,
@@ -28,20 +21,31 @@ func (a *App) Send(c *gin.Context) {
 		))
 		return
 	}
-	email := contract.Email{
-		Subject: req.Subject,
-		Body:    req.Body,
-	}
 
-	err := a.EmailService.Send(req.SenderKey, req.Recipient, email)
+	a.EmailService.AddJob(req)
 
-	if err != nil {
+	c.JSON(200, CreateReply(
+		nil,
+		nil,
+	))
+}
+func (a *App) Status(c *gin.Context) {
+	c.JSON(200, CreateReply(
+		a.EmailService.Count(),
+		nil,
+	))
+}
+func (a *App) SendTemplate(c *gin.Context) {
+	var req contract.EmailTemplate
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(200, CreateReply(
 			nil,
 			err,
 		))
 		return
 	}
+
+	a.EmailService.AddTemplateJob(req)
 
 	c.JSON(200, CreateReply(
 		nil,
