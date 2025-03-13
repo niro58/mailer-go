@@ -25,9 +25,14 @@ type ClientConfig struct {
 	Password string `json:"password"`
 }
 
+type Job struct {
+	Email  contract.Email
+	Config *ClientConfig
+}
+
 var (
 	workers = 10
-	jobs    = make(chan contract.Email, workers)
+	jobs    = make(chan Job, workers)
 	wg      = sync.WaitGroup{}
 )
 
@@ -100,48 +105,59 @@ func (e EmailService) StartPool() {
 	}
 }
 func (e EmailService) AddJob(email contract.Email) error {
-	jobs <- email
+	config, exists := e.Configs[email.SenderKey]
+	if !exists {
+		return ErrClientNotFound
+	}
+
+	jobs <- Job{email, config}
+
 	return nil
 }
+
 func (e EmailService) AddTemplateJob(template contract.EmailTemplate) error {
-	var email contract.Email
+	email := contract.Email{
+		EmailHeaders: template.EmailHeaders,
+	}
 
 	templateConfig, ok := e.Templates[template.TemplateKey]
 	if !ok {
 		return ErrTemplateNotFound
 	}
+	config, exists := e.Configs[template.SenderKey]
+	if !exists {
+		return ErrClientNotFound
+	}
+
 	err := templateConfig.Validate(template.Variables)
 	if err != nil {
 		return err
 	}
 
 	for k, v := range template.Variables {
+		k = "{{" + k + "}}"
 		templateConfig.Body = strings.ReplaceAll(templateConfig.Body, k, v)
 		templateConfig.Subject = strings.ReplaceAll(templateConfig.Subject, k, v)
 	}
 
 	email.Subject = templateConfig.Subject
 	email.Body = templateConfig.Body
-	jobs <- email
+	jobs <- Job{email, config}
 
 	return nil
 }
-func (e *EmailService) Send(id int, jobs <-chan contract.Email, wg *sync.WaitGroup) error {
+
+func (e *EmailService) Send(id int, jobs <-chan Job, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	for job := range jobs {
-		config, exists := e.Configs[job.SenderKey]
-		if !exists {
-			return ErrClientNotFound
-		}
-
-		client, err := createSMTPClient(*config)
+		client, err := createSMTPClient(*job.Config)
 		if err != nil {
 			return err
 		}
 		defer client.Quit()
 
-		for _, recipient := range job.Recipients {
+		for _, recipient := range job.Email.Recipients {
 			if err := client.Rcpt(recipient); err != nil {
 				return err
 			}
@@ -151,12 +167,12 @@ func (e *EmailService) Send(id int, jobs <-chan contract.Email, wg *sync.WaitGro
 		if err != nil {
 			return err
 		}
-		msg := "From: " + config.Host + "\r\n" +
-			"To: " + strings.Join(job.Recipients, ", ") + "\r\n" +
-			"Bcc: " + strings.Join(job.Bcc, ", ") + "\r\n" +
-			"Subject: " + job.Subject + "\r\n" +
+		msg := "From: " + job.Config.Host + "\r\n" +
+			"To: " + strings.Join(job.Email.Recipients, ", ") + "\r\n" +
+			"Bcc: " + strings.Join(job.Email.Bcc, ", ") + "\r\n" +
+			"Subject: " + job.Email.Subject + "\r\n" +
 			"\r\n" +
-			job.Body + "\r\n"
+			job.Email.Body + "\r\n"
 
 		if _, err = w.Write([]byte(msg)); err != nil {
 			return err
