@@ -15,7 +15,7 @@ type Email struct {
 
 type EmailTemplate struct {
 	EmailHeaders
-	TemplateKey string            `json:"string"`
+	TemplateKey string            `json:"templateKey"`
 	Variables   map[string]string `json:"variables"`
 }
 

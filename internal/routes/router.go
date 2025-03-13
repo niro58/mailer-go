@@ -17,7 +17,7 @@ func SetupRouter() *gin.Engine {
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := r.Group("/")
-	// api.Use(middleware.AuthRequired())
+	api.Use(middleware.AuthRequired())
 
 	api.GET("/health", app.Health)
 	api.POST("/send", app.Send)
