@@ -13,7 +13,7 @@ func AuthRequired() gin.HandlerFunc {
 		auth := c.GetHeader("Authorization")
 
 		if auth != apiAuth {
-			c.JSON(401, handler.CreateReply(nil, handler.ErrUnauthorized))
+			handler.Respond(c, nil, handler.ErrUnauthorized)
 			c.Abort()
 		}
 

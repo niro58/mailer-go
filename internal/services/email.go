@@ -4,8 +4,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	contract "mailer-go/internal/contracts"
+	util "mailer-go/internal/utils"
 	"net/smtp"
 	"os"
 	"path"
@@ -32,21 +34,17 @@ type Job struct {
 
 var (
 	workers = 10
-	jobs    = make(chan Job, workers)
-	wg      = sync.WaitGroup{}
 )
 
 type EmailService struct {
 	Configs   map[string]*ClientConfig
 	Templates map[string]Template
+	jobs      chan Job
+	wg        sync.WaitGroup
 }
 
 func getClientConfigs() (map[string]*ClientConfig, error) {
-	dirname, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	jsonFile, err := os.Open(path.Join(dirname, "/clients.json"))
+	jsonFile, err := os.Open(path.Join(util.Root, "/clients.json"))
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +83,7 @@ func createSMTPClient(sender ClientConfig) (*smtp.Client, error) {
 	return client, nil
 }
 
-func NewEmailService() EmailService {
+func NewEmailService() *EmailService {
 	configs, err := getClientConfigs()
 	if err != nil {
 		panic(err)
@@ -95,27 +93,32 @@ func NewEmailService() EmailService {
 		panic(err)
 	}
 
-	return EmailService{configs, templates}
-}
-
-func (e EmailService) StartPool() {
-	for w := 0; w <= workers; w++ {
-		wg.Add(1)
-		go e.Send(w, jobs, &wg)
+	return &EmailService{
+		Configs:   configs,
+		Templates: templates,
+		jobs:      make(chan Job, workers),
 	}
 }
-func (e EmailService) AddJob(email contract.Email) error {
+
+func (e *EmailService) StartPool() {
+	for w := 0; w < workers; w++ {
+		e.wg.Add(1)
+		go e.Send(w, e.jobs, &e.wg)
+	}
+}
+
+func (e *EmailService) AddJob(email contract.Email) error {
 	config, exists := e.Configs[email.SenderKey]
 	if !exists {
 		return ErrClientNotFound
 	}
 
-	jobs <- Job{email, config}
+	e.jobs <- Job{email, config}
 
 	return nil
 }
 
-func (e EmailService) AddTemplateJob(template contract.EmailTemplate) error {
+func (e *EmailService) AddTemplateJob(template contract.EmailTemplate) error {
 	email := contract.Email{
 		EmailHeaders: template.EmailHeaders,
 	}
@@ -142,49 +145,72 @@ func (e EmailService) AddTemplateJob(template contract.EmailTemplate) error {
 
 	email.Subject = templateConfig.Subject
 	email.Body = templateConfig.Body
-	jobs <- Job{email, config}
+	e.jobs <- Job{email, config}
 
 	return nil
 }
 
-func (e *EmailService) Send(id int, jobs <-chan Job, wg *sync.WaitGroup) error {
+func (e *EmailService) Send(id int, jobs <-chan Job, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for job := range jobs {
+		fmt.Println("Worker", id, "sending email to", job.Email.Recipients)
+
 		client, err := createSMTPClient(*job.Config)
 		if err != nil {
-			return err
+			fmt.Println("Error creating SMTP client:", err)
+			continue
 		}
-		defer client.Quit()
 
 		for _, recipient := range job.Email.Recipients {
 			if err := client.Rcpt(recipient); err != nil {
-				return err
+				fmt.Println("Error adding recipient:", err)
+				continue
 			}
 		}
 
 		w, err := client.Data()
 		if err != nil {
-			return err
+			fmt.Println("Error getting data writer:", err)
+			continue
 		}
-		msg := "From: " + job.Config.Host + "\r\n" +
-			"To: " + strings.Join(job.Email.Recipients, ", ") + "\r\n" +
-			"Bcc: " + strings.Join(job.Email.Bcc, ", ") + "\r\n" +
-			"Subject: " + job.Email.Subject + "\r\n" +
-			"\r\n" +
-			job.Email.Body + "\r\n"
+		msg := fmt.Sprintf(
+			"From: %s\r\n"+
+				"To: %s\r\n"+
+				"Bcc: %s\r\n"+
+				"Subject: %s\r\n"+
+				"MIME-Version: 1.0\r\n"+
+				"Content-Type: %s; charset=\"UTF-8\"\r\n\r\n"+
+				"%s\r\n",
+			job.Config.Host,
+			strings.Join(job.Email.Recipients, ", "),
+			strings.Join(job.Email.Bcc, ", "),
+			job.Email.Subject,
+			job.Email.ContentType,
+			job.Email.Body)
 
 		if _, err = w.Write([]byte(msg)); err != nil {
-			return err
+			fmt.Println("Error writing message:", err)
+			continue
 		}
 		if err = w.Close(); err != nil {
-			return err
+			fmt.Println("Error closing writer:", err)
+			continue
 		}
-	}
 
-	return nil
+		client.Quit()
+	}
 }
 
-func (EmailService) Count() int {
-	return len(jobs)
+func (e *EmailService) Count() int {
+	return len(e.jobs)
+}
+
+func (e *EmailService) Wait() {
+	e.wg.Wait()
+}
+
+func (e *EmailService) Shutdown() {
+	close(e.jobs)
+	e.Wait()
 }

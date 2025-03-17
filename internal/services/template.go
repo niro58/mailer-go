@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	util "mailer-go/internal/utils"
 	"os"
 	"path"
 	"strings"
@@ -56,12 +57,7 @@ func (t Template) FindVariables() []string {
 	return result
 }
 func getTemplates() (map[string]Template, error) {
-	dirname, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	folder := path.Join(dirname, "/templates")
+	folder := path.Join(util.Root, "/templates")
 	folderFiles, err := os.ReadDir(folder)
 	if err != nil {
 		return nil, err
