@@ -44,7 +44,12 @@ type EmailService struct {
 }
 
 func getClientConfigs() (map[string]*ClientConfig, error) {
-	jsonFile, err := os.Open(path.Join(util.Root, "/clients.json"))
+	configPath := os.Getenv("CONFIG_PATH") // Read from env
+	if configPath == "" {
+		configPath = path.Join(util.Root, "clients.json") // Fallback
+	}
+
+	jsonFile, err := os.Open(configPath)
 	if err != nil {
 		return nil, err
 	}

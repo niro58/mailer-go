@@ -3,18 +3,25 @@ version: "3.8"
 services:
   mailer-go:
     image: ghcr.io/niro58/mailer-go:prod
+    configs:
+      - source: mailer-go-clients-prod
+        target: /app/config/clients.json
     volumes:
-      - /home/niro/mailer-go/clients.json:/clients.json
+      - type: bind
+        source: /home/niro/mailer-go/templates
+        target: /app/config/templates
+        read_only: true
+    environment:
+      - CONFIG_PATH=/app/config/clients.json
+      - TEMPLATES_PATH=/app/config/templates
     labels:
-      - "traefik.enable=true" # Enable Traefik for this service
-      - "traefik.http.routers.mailer-go.rule=Host(`api.nichita-r.com`)" # Route based on host
-      - "traefik.http.routers.mailer-go.entrypoints=websecure" # Use the HTTPS entry point
-      - "traefik.http.routers.mailer-go.tls.certresolver=myresolver" # Use Let's Encrypt for TLS
-      - "traefik.http.services.mailer-go.loadbalancer.server.port=8085" # Specify the app's port (adjust if needed)
-      - "traefik.http.services.mailer-go.loadbalancer.sticky=true" # Enable session stickiness
+      - "traefik.enable=true"
+      - "traefik.http.routers.mailer-go.rule=Host(`api.nichita-r.com`)"
+      - "traefik.http.routers.mailer-go.entrypoints=websecure"
+      - "traefik.http.routers.mailer-go.tls.certresolver=myresolver"
+      - "traefik.http.services.mailer-go.loadbalancer.server.port=8085"
+      - "traefik.http.services.mailer-go.loadbalancer.sticky=true"
       - "com.centurylinklabs.watchtower.enable=true"
-    env_file:
-      - env
     deploy:
       mode: replicated
       replicas: 3
@@ -22,9 +29,10 @@ services:
         condition: on-failure
       update_config:
         order: start-first
-      placement: {}
-    networks:
-      - web
+
+configs:
+  mailer-go-clients-prod:
+    external: true
 
 networks:
   web:

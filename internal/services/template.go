@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	util "mailer-go/internal/utils"
 	"os"
@@ -60,7 +61,8 @@ func getTemplates() (map[string]Template, error) {
 	folder := path.Join(util.Root, "/templates")
 	folderFiles, err := os.ReadDir(folder)
 	if err != nil {
-		return nil, err
+		fmt.Println("Error reading templates folder", err)
+		return nil, nil
 	}
 
 	result := make(map[string]Template)
