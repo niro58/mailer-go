@@ -2,17 +2,12 @@ package main
 
 import (
 	"fmt"
+	"mailer-go/internal/environment"
 	route "mailer-go/internal/routes"
-	util "mailer-go/internal/utils"
-	"path"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load(path.Join(util.Root, "/.env"))
-	if err != nil {
-		fmt.Println("Error loading .env file")
-	}
+	environment.Environment = environment.NewEnv()
+	fmt.Println(environment.Environment.ClientsPath)
 	route.SetupRouter()
 }
