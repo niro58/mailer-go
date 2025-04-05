@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	contract "mailer-go/internal/contracts"
-	"mailer-go/internal/environment"
 	"net/smtp"
 	"os"
 	"strings"
@@ -43,8 +42,9 @@ type EmailService struct {
 }
 
 func getClientConfigs() (map[string]*ClientConfig, error) {
-	fmt.Println("Loading client configs from", environment.Environment.ClientsPath)
-	jsonFile, err := os.Open(environment.Environment.ClientsPath)
+	clientsPath := "./clients.json"
+	fmt.Println("Loading client configs from", clientsPath)
+	jsonFile, err := os.Open(clientsPath)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +55,7 @@ func getClientConfigs() (map[string]*ClientConfig, error) {
 	var result map[string]*ClientConfig
 	json.Unmarshal([]byte(byteValue), &result)
 
+	fmt.Println("Loaded client configs:", len(result))
 	return result, nil
 }
 

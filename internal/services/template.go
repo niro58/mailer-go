@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mailer-go/internal/environment"
 	"os"
 	"path"
 	"strings"
@@ -58,7 +57,9 @@ func (t Template) FindVariables() []string {
 	return result
 }
 func getTemplates() (map[string]Template, error) {
-	folderFiles, err := os.ReadDir(environment.Environment.TemplatesDir)
+	templatePath := "./templates"
+	fmt.Println("Loading templates from", templatePath)
+	folderFiles, err := os.ReadDir(templatePath)
 	if err != nil {
 		fmt.Println("Error reading templates folder", err)
 		return nil, nil
@@ -66,7 +67,7 @@ func getTemplates() (map[string]Template, error) {
 
 	result := make(map[string]Template)
 	for _, file := range folderFiles {
-		jsonFile, err := os.Open(path.Join(environment.Environment.TemplatesDir, file.Name()))
+		jsonFile, err := os.Open(path.Join(templatePath, file.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -79,5 +80,6 @@ func getTemplates() (map[string]Template, error) {
 		result[template.Name] = template
 	}
 
+	fmt.Println("Loaded templates:", len(result))
 	return result, nil
 }

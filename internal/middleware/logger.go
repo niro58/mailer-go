@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"mailer-go/internal/environment"
 	"runtime/debug"
 	"time"
 
@@ -34,17 +33,22 @@ func Logger() gin.HandlerFunc {
 
 		// Standard fields
 		event.
-			Str("service", "everest-api").                 // Critical for Loki filtering
-			Str("environment", environment.Environment.Mode). // dev/stage/prod
+			Str("service", "everest-api").
 			Str("method", c.Request.Method).
 			Str("path", path).
 			Str("query", raw).
 			Int("status_code", statusCode).
 			Str("client_ip", c.ClientIP()).
 			Str("user_agent", c.Request.UserAgent()).
-			Dur("latency_ms", latency). // Duration in milliseconds
-			Str("error", errorMessage).
-			Bool("is_error", statusCode >= 400) // Boolean for easy filtering
+			Dur("latency_ms", latency)
+
+		// Only add error fields if there's an actual error
+		if errorMessage != "" {
+			event.Str("error", errorMessage)
+		}
+		if statusCode >= 400 {
+			event.Bool("is_error", true)
+		}
 
 		// Add stack trace for server errors
 		if statusCode >= 500 {

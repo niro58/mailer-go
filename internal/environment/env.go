@@ -1,4 +1,4 @@
-package environment
+package env
 
 import (
 	"os"
@@ -17,21 +17,20 @@ func getRoot() string {
 
 }
 
-type Env struct {
-	ApiAuth      string `env:"API_AUTH"`
-	ClientsPath  string `env:"CLIENTS_PATH"`
-	TemplatesDir string `env:"TEMPLATES_DIR"`
-	Mode         string `env:"MODE"`
+type Environment struct {
+	ApiAuth string `env:"API_AUTH"`
+	GinMode string `env:"GIN_MODE"`
+	Port    string `env:"PORT"`
 }
 
-var Environment *Env
+var Env *Environment
 
-func NewEnv() *Env {
-	var env Env
+func NewEnv() {
+	var env Environment
 
-	_ = godotenv.Load(path.Join(getRoot(), "/.env"), "")
+	_ = godotenv.Load(path.Join(getRoot(), "/.env"))
 
-	envVars := reflect.ValueOf(Env{})
+	envVars := reflect.ValueOf(Environment{})
 	for i := 0; i < envVars.NumField(); i++ {
 		field := envVars.Type().Field(i)
 		fieldEnvName := field.Tag.Get("env")
@@ -42,7 +41,7 @@ func NewEnv() *Env {
 		v, ok := os.LookupEnv(fieldEnvName)
 
 		if !ok {
-			panic("Environment variable not found: " + fieldEnvName)
+			panic("Env variable not found: " + fieldEnvName)
 		}
 
 		el := reflect.ValueOf(&env).Elem().FieldByName(field.Name)
@@ -52,5 +51,6 @@ func NewEnv() *Env {
 			el.SetBool(v == "true")
 		}
 	}
-	return &env
+
+	Env = &env
 }

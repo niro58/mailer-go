@@ -72,9 +72,10 @@ jobs:
 
       - name: Create env file
         run: |
-          echo "GIT_COMMIT_HASH=${{ needs.commit-hash.outputs.commit_hash }}" >> .env
-          echo "API_AUTH=${{ secrets.API_AUTH }}" >> .env
-          echo "GIN_MODE=release" >> .env
+          echo "GIT_COMMIT_HASH=${{ needs.commit-hash.outputs.commit_hash }}" >> env
+          echo "API_AUTH=${{ secrets.API_AUTH }}" >> env
+          echo "GIN_MODE=release" >> env
+          echo "PORT=8088" >> env
 
       - name: "Docker Stack Deploy"
         uses: cssnr/stack-deploy-action@v1

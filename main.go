@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"mailer-go/internal/environment"
-	route "mailer-go/internal/routes"
+	env "mailer-go/internal/environment"
+	"mailer-go/internal/router"
 )
 
 func main() {
-	environment.Environment = environment.NewEnv()
-	fmt.Println(environment.Environment.ClientsPath)
-	route.SetupRouter()
+	env.NewEnv()
+	router.Init()
 }

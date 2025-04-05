@@ -3,25 +3,32 @@ version: "3.8"
 services:
   mailer-go:
     image: ghcr.io/niro58/mailer-go:prod
-    configs:
-      - source: mailer-go-clients-prod
-        target: /app/config/clients.json
-    volumes:
-      - type: bind
-        source: /home/niro/mailer-go/templates
-        target: /app/config/templates
-        read_only: true
-    environment:
-      - CLIENTS_PATH=/app/config/clients.json
-      - TEMPLATES_DIR=/app/config/templates
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mailer-go.rule=Host(`api.nichita-r.com`)"
       - "traefik.http.routers.mailer-go.entrypoints=websecure"
       - "traefik.http.routers.mailer-go.tls.certresolver=myresolver"
-      - "traefik.http.services.mailer-go.loadbalancer.server.port=8085"
+      - "traefik.http.services.mailer-go.loadbalancer.server.port=8088"
       - "traefik.http.services.mailer-go.loadbalancer.sticky=true"
       - "com.centurylinklabs.watchtower.enable=true"
+      - "log_filter.level=error"
+      - "log_filter.service=backend"
+      - "service=mailer"
+
+    working_dir: /app
+    volumes:
+      - type: bind
+        source: /home/niro/mailer-go/clients.json
+        target: /app/clients.json
+        read_only: true
+
+      - type: bind
+        source: /home/niro/mailer-go/templates
+        target: /app/templates
+        read_only: true
+
+    env_file:
+      - env
     deploy:
       mode: replicated
       replicas: 3
@@ -29,10 +36,9 @@ services:
         condition: on-failure
       update_config:
         order: start-first
-
-configs:
-  mailer-go-clients-prod:
-    external: true
+      placement: {}
+    networks:
+      - web
 
 networks:
   web:
