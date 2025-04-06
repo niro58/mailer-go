@@ -2,8 +2,8 @@ name: Deploy to Server
 
 on:
   push:
-    branches:
-      - prod
+    tags:
+      - "v*"
 
 permissions:
   packages: write
@@ -32,8 +32,6 @@ jobs:
         run: go mod tidy
       - name: Build
         run: go build -v ./...
-      # - name: Test with the Go CLI
-      #   run: go test -v ./...
 
   build-and-push-image:
     needs:
