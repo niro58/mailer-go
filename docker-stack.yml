@@ -9,7 +9,6 @@ services:
       - "traefik.http.routers.mailer-go.entrypoints=websecure"
       - "traefik.http.routers.mailer-go.tls.certresolver=myresolver"
       - "traefik.http.services.mailer-go.loadbalancer.server.port=8088"
-      - "traefik.http.services.mailer-go.loadbalancer.sticky=true"
       - "com.centurylinklabs.watchtower.enable=true"
       - "log_filter.level=error"
       - "log_filter.service=backend"
