@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: niro-mailer
+  namespace: personal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: niro-mailer
+  template:
+    metadata:
+      labels:
+        app: niro-mailer
+    spec:
+      containers:
+        - name: niro-mailer
+          image: ghcr.io/niro58/mailer-go:VERSION
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: client-config-volume
+              mountPath: /app/clients.json
+              subPath: clients.json
+            - name: template-volume
+              mountPath: /app/templates
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 60
+          resources:
+            requests:
+              cpu: 25m
+              memory: 250Mi
+            limits:
+              cpu: 100m
+              memory: 450Mi
+          env:
+            - name: GIN_MODE
+              value: release
+            - name: PORT
+              value: "8088"
+            - name: API_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: niro-mailer
+                  key: auth
+      volumes:
+        - name: client-config-volume
+          configMap:
+            name: client-config
+            items:
+              - key: clients.json
+                path: clients.json
+        - name: template-volume
+          configMap:
+            name: template-config

@@ -33,7 +33,7 @@ func Logger() gin.HandlerFunc {
 
 		// Standard fields
 		event.
-			Str("service", "everest-api").
+			Str("service", "niro-mailer").
 			Str("method", c.Request.Method).
 			Str("path", path).
 			Str("query", raw).

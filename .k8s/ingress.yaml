@@ -1,0 +1,19 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: niro-mailer
+  namespace: personal
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`mailer.nichita-r.com`)
+      kind: Rule
+      middlewares:
+        - name: gzip-compress
+          namespace: kube-system
+      services:
+        - name: niro-mailer-service
+          port: 80
+  tls:
+    certResolver: myresolver
