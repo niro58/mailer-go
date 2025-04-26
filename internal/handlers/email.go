@@ -7,7 +7,9 @@ import (
 )
 
 func (a *App) Health(c *gin.Context) {
-	Respond(c, "OK", nil)
+	c.JSON(200, gin.H{
+		"status": "ok",
+	})
 }
 func (a *App) Send(c *gin.Context) {
 	var req contract.Email

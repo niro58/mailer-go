@@ -34,12 +34,14 @@ func Init() *gin.Engine {
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := r.Group("/")
-	api.Use(middleware.AuthRequired())
-
 	api.GET("/health", app.Health)
-	api.POST("/send", app.Send)
-	api.POST("/send-template", app.SendTemplate)
-	api.GET("/status", app.Status)
+
+	auth := api.Group("/")
+	auth.Use(middleware.AuthRequired())
+
+	auth.POST("/send", app.Send)
+	auth.POST("/send-template", app.SendTemplate)
+	auth.GET("/status", app.Status)
 
 	if env.Env.GinMode == "release" {
 		r.Run(fmt.Sprintf(":%s", env.Env.Port))
