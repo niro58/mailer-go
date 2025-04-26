@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: niro-mailer
-          image: ghcr.io/niro58/mailer-go:805b0e1fd85219ab77acc13033011e829e576a36
+          image: ghcr.io/niro58/mailer-go:2fea9ca25a1d7c68b43111dfb0598aaaff8dc83c
+          workingDir: /app
           ports:
             - containerPort: 80
           volumeMounts:
