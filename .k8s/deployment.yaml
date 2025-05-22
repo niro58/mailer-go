@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: niro-mailer
-          image: ghcr.io/niro58/mailer-go:a7c6db8aa335c1715444243d499dde06cf99f664
+          image: ghcr.io/niro58/mailer-go:77f20d0e81dcf4bf6e0180ff0883c8d8de7d0aca
           workingDir: /app
           ports:
             - containerPort: 80
@@ -38,7 +38,7 @@ spec:
               cpu: 25m
               memory: 250Mi
             limits:
-              cpu: 100m
+              cpu: 50m
               memory: 450Mi
           env:
             - name: GIN_MODE
