@@ -183,7 +183,7 @@ func (e *EmailService) Send(id int, jobs <-chan Job, wg *sync.WaitGroup) {
 				"MIME-Version: 1.0\r\n"+
 				"Content-Type: %s; charset=\"UTF-8\"\r\n\r\n"+
 				"%s\r\n",
-			job.Config.Host,
+			job.Config.Username,
 			strings.Join(job.Email.Recipients, ", "),
 			strings.Join(job.Email.Bcc, ", "),
 			job.Email.Subject,
