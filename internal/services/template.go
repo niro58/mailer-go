@@ -11,8 +11,7 @@ import (
 )
 
 var (
-	ErrVariableLength   = errors.New("variable length mismatch")
-	ErrVariableNotFound = errors.New("variable not found")
+	ErrVariableLength = errors.New("variable length mismatch")
 )
 
 type Template struct {
@@ -36,7 +35,7 @@ func (t Template) Validate(vars map[string]string) error {
 			}
 		}
 		if !found {
-			return ErrVariableNotFound
+			return fmt.Errorf("variable %s not found in template %s", v, t.Name)
 		}
 	}
 	return nil
@@ -77,7 +76,7 @@ func getTemplates() (map[string]Template, error) {
 		json.Unmarshal([]byte(byteValue), &template)
 		template.Variables = template.FindVariables()
 
-		result[template.Name] = template
+		result[strings.ToLower(template.Name)] = template
 	}
 
 	fmt.Println("Loaded templates:", len(result))

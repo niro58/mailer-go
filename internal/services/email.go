@@ -15,7 +15,7 @@ import (
 
 var (
 	ErrClientNotFound   = errors.New("client not found")
-	ErrTemplateNotFound = errors.New("client not found")
+	ErrTemplateNotFound = errors.New("template not found")
 )
 
 type ClientConfig struct {
@@ -175,6 +175,9 @@ func (e *EmailService) Send(id int, jobs <-chan Job, wg *sync.WaitGroup) {
 			fmt.Println("Error getting data writer:", err)
 			continue
 		}
+
+		job.Email.ContentType = "text/html"
+
 		msg := fmt.Sprintf(
 			"From: %s\r\n"+
 				"To: %s\r\n"+

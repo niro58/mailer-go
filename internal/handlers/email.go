@@ -22,9 +22,9 @@ func (a *App) Send(c *gin.Context) {
 		req.ContentType = "text/plain"
 	}
 
-	a.EmailService.AddJob(req)
+	err := a.EmailService.AddJob(req)
 
-	Respond(c, nil, nil)
+	Respond(c, nil, err)
 }
 func (a *App) Status(c *gin.Context) {
 	Respond(c, a.EmailService.Count(), nil)
@@ -36,7 +36,7 @@ func (a *App) SendTemplate(c *gin.Context) {
 		return
 	}
 
-	a.EmailService.AddTemplateJob(req)
+	err := a.EmailService.AddTemplateJob(req)
 
-	Respond(c, nil, nil)
+	Respond(c, nil, err)
 }
