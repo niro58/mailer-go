@@ -15,15 +15,15 @@ spec:
     spec:
       containers:
         - name: niro-mailer
-          image: ghcr.io/niro58/mailer-go:77f20d0e81dcf4bf6e0180ff0883c8d8de7d0aca
+          image: ghcr.io/niro58/mailer-go:b78d6a89dbaa87fe5bdc5fab586aee0b49ce594e
           workingDir: /app
           ports:
             - containerPort: 80
           volumeMounts:
-            - name: client-config-volume
+            - name: mailer-client-config-volume
               mountPath: /app/clients.json
               subPath: clients.json
-            - name: template-volume
+            - name: mailer-template-volume
               mountPath: /app/templates
               readOnly: true
           livenessProbe:
@@ -36,7 +36,7 @@ spec:
           resources:
             requests:
               cpu: 25m
-              memory: 250Mi
+              memory: 150Mi
             limits:
               cpu: 50m
               memory: 450Mi
@@ -51,12 +51,12 @@ spec:
                   name: niro-mailer
                   key: auth
       volumes:
-        - name: client-config-volume
+        - name: mailer-client-config-volume
           configMap:
-            name: client-config
+            name: mailer-client-config
             items:
               - key: clients.json
                 path: clients.json
-        - name: template-volume
+        - name: mailer-template-volume
           configMap:
             name: template-config
