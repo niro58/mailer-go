@@ -20,10 +20,10 @@ spec:
           ports:
             - containerPort: 80
           volumeMounts:
-            - name: client-config-volume
+            - name: mailer-client-config-volume
               mountPath: /app/clients.json
               subPath: clients.json
-            - name: template-volume
+            - name: mailer-template-volume
               mountPath: /app/templates
               readOnly: true
           livenessProbe:
@@ -36,7 +36,7 @@ spec:
           resources:
             requests:
               cpu: 25m
-              memory: 250Mi
+              memory: 150Mi
             limits:
               cpu: 50m
               memory: 450Mi
@@ -51,12 +51,12 @@ spec:
                   name: niro-mailer
                   key: auth
       volumes:
-        - name: client-config-volume
+        - name: mailer-client-config-volume
           configMap:
-            name: client-config
+            name: mailer-client-config
             items:
               - key: clients.json
                 path: clients.json
-        - name: template-volume
+        - name: mailer-template-volume
           configMap:
             name: template-config
