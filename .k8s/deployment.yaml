@@ -59,4 +59,4 @@ spec:
                 path: clients.json
         - name: mailer-template-volume
           configMap:
-            name: template-config
+            name: mailer-template-config
