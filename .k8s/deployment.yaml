@@ -38,7 +38,7 @@ spec:
               cpu: 25m
               memory: 150Mi
             limits:
-              cpu: 50m
+              cpu: 200m # 2026-10-07 cluster audit: throttled in 6.4% of CFS periods (1225s total) at 50m; limit only, no scheduling cost
               memory: 450Mi
           env:
             - name: GIN_MODE
